@@ -4,83 +4,75 @@
 //
 //  Created by Shoumik Barman Polok on 8/11/24.
 //
-
 import SwiftUI
-import CoreData
 
 struct ContentView: View {
-    @Environment(\.managedObjectContext) private var viewContext
-
-    @FetchRequest(
-        sortDescriptors: [NSSortDescriptor(keyPath: \Item.timestamp, ascending: true)],
-        animation: .default)
-    private var items: FetchedResults<Item>
-
+    @StateObject var gameState = GameState()
+    
     var body: some View {
-        NavigationView {
-            List {
-                ForEach(items) { item in
-                    NavigationLink {
-                        Text("Item at \(item.timestamp!, formatter: itemFormatter)")
-                    } label: {
-                        Text(item.timestamp!, formatter: itemFormatter)
+        let borderSize = CGFloat(5)
+        
+        ZStack {
+           
+            Color.purple
+                .edgesIgnoringSafeArea(.all)
+            
+            VStack {
+                Text(gameState.turnText())
+                    .font(.title)
+                    .bold()
+                    .padding()
+                   
+                Spacer()
+                
+                Text(String(format: "Crosses: %d", gameState.crossesScore))
+                    .font(.title)
+                    .bold()
+                    .padding()
+                
+                VStack(spacing: borderSize) {
+                    ForEach(0...2, id: \.self) { row in
+                        HStack(spacing: borderSize) {
+                            ForEach(0...2, id: \.self) { column in
+                                let cell = gameState.board[row][column]
+                                
+                                Text(cell.displayTile())
+                                    .font(.system(size: 60))
+                                    .foregroundColor(cell.tileColor())
+                                    .bold()
+                                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                    .aspectRatio(1, contentMode: .fit)
+                                    .background(Color.gray)
+                                    .onTapGesture {
+                                        gameState.placeTile(row, column)
+                                    }
+                            }
+                        }
                     }
                 }
-                .onDelete(perform: deleteItems)
-            }
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    EditButton()
+                .background(Color.black)
+                .padding()
+                .alert(isPresented: $gameState.showAlert) {
+                    Alert(
+                        title: Text(gameState.alertMessage),
+                        dismissButton: .default(Text("Okay")) {
+                            gameState.resetBoard()
+                        }
+                    )
                 }
-                ToolbarItem {
-                    Button(action: addItem) {
-                        Label("Add Item", systemImage: "plus")
-                    }
-                }
-            }
-            Text("Select an item")
-        }
-    }
-
-    private func addItem() {
-        withAnimation {
-            let newItem = Item(context: viewContext)
-            newItem.timestamp = Date()
-
-            do {
-                try viewContext.save()
-            } catch {
-                // Replace this implementation with code to handle the error appropriately.
-                // fatalError() causes the application to generate a crash log and terminate. You should not use this function in a shipping application, although it may be useful during development.
-                let nsError = error as NSError
-                fatalError("Unresolved error \(nsError), \(nsError.userInfo)")
-            }
-        }
-    }
-
-    private func deleteItems(offsets: IndexSet) {
-        withAnimation {
-            offsets.map { items[$0] }.forEach(viewContext.delete)
-
-            do {
-                try viewContext.save()
-            } catch {
-                // Replace this implementation with code to handle the error appropriately.
-                // fatalError() causes the application to generate a crash log and terminate. You should not use this function in a shipping application, although it may be useful during development.
-                let nsError = error as NSError
-                fatalError("Unresolved error \(nsError), \(nsError.userInfo)")
+                
+                Text(String(format: "Noughts: %d", gameState.noughtsScore))
+                    .font(.title)
+                    .bold()
+                    .padding()
+                Spacer()
             }
         }
     }
 }
 
-private let itemFormatter: DateFormatter = {
-    let formatter = DateFormatter()
-    formatter.dateStyle = .short
-    formatter.timeStyle = .medium
-    return formatter
-}()
-
-#Preview {
-    ContentView().environment(\.managedObjectContext, PersistenceController.preview.container.viewContext)
+struct ContentView_Previews: PreviewProvider {
+    static var previews: some View {
+        ContentView()
+    }
 }
